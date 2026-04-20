@@ -3,7 +3,7 @@ project(OSProject C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(OSProject main.c
+add_executable(main main.c
         Dijkstra.h
         Dijkstra.c
 )
