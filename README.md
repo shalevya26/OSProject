@@ -1,3 +1,3 @@
-Shalev Yaacov
-Itamar Dayan
-Rotem Magen
+* Shalev Yaacov
+* Itamar Dayan
+* Rotem Magen
