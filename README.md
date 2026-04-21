@@ -1,3 +1,3 @@
-* Shalev Yaacov
-* Itamar Dayan
-* Rotem Magen
+* Shalev Yaacov - Dijkstra Algorithm
+* Itamar Dayan - GUI interface
+* Rotem Magen - Dijkstra Algorithm
