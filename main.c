@@ -1,6 +1,6 @@
-#include <stdio.h>
-
+#include "Gui.h"
 #include "Dijkstra.h"
+#include <stdio.h>
 
 int main(void) {
   /* --- 1. File Handling --- */
@@ -58,10 +58,15 @@ int main(void) {
 
     // Run Dijkstra's Algorithm to find the shortest path
     dijkstra(graph, N, src, dst);
+
+    // ---- Launch the Raylib GUI ----
+    displayGraphGUI(graph, N);
+
   } else {
     printf("Could not read source and destination nodes\n");
     fclose(file);
   }
+
 
   /* --- 6. Cleanup --- */
   // Free all linked lists and the primary pointer array
