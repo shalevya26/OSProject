@@ -2,20 +2,18 @@
 #include <stdlib.h>
 #include "Dijkstra.h"
 
-// ---> FIX: Only include Gui.h if the Makefile passes the ENABLE_GUI flag (Milestone 2)
+// Only include Gui.h if the Makefile passes the ENABLE_GUI flag (Milestone 2)
 #ifdef ENABLE_GUI
 #include "Gui.h"
 #endif
-
+/* --- 1. File Handling --- */
 int main(int argc, char *argv[]) {
-  // ---> FIX: Check if the user provided a filename via command line
+  //Check if the user provided a filename via command line
   if (argc < 2) {
     printf("Usage: %s <file_name>\n", argv[0]);
     return 1;
   }
 
-  /* --- 1. File Handling --- */
-  // ---> FIX: Open the file provided in the command line argument instead of hardcoding
   FILE* file = fopen(argv[1], "r");
   if (file == NULL) {
     printf("Error opening %s\n", argv[1]);
@@ -71,7 +69,6 @@ int main(int argc, char *argv[]) {
     // Run Dijkstra's Algorithm to find the shortest path (runs for both milestones)
     dijkstra(graph, N, src, dst);
 
-// ---> FIX: Only launch the Raylib GUI if we are building Milestone 2 (the 'sim' executable)
 #ifdef ENABLE_GUI
     // ---- Launch the Raylib GUI ----
     displayGraphGUI(graph, N);
