@@ -57,7 +57,7 @@ int minDistance(int dist[], int visited[], int N) {
  * Main Dijkstra's Algorithm implementation.
  * Finds the shortest path and prints the result.
  */
-void dijkstra(Node** graph, int N, int src, int dst) {
+void dijkstra(Node** graph, int N, int src, int dst, int** out_path, int* out_path_len) {
   int* dist = (int*)malloc(sizeof(int) * N);
   int* visited = (int*)malloc(sizeof(int) * N);
   int* parent = (int*)malloc(sizeof(int) * N);
@@ -102,10 +102,30 @@ void dijkstra(Node** graph, int N, int src, int dst) {
   /* Output Results */
   if (dist[dst] == INF) {
     printf("No path found\n");
+    // Handle no path found
+    if (out_path) *out_path = NULL;
+    if (out_path_len) *out_path_len = 0;
   } else {
     printPath(parent, dst, 1);
     printf("\n");
     printf("%d\n", dist[dst]);
+
+    // Build the path array using the parent pointers
+    if (out_path && out_path_len) {
+        int len = 0;
+        int curr = dst;
+        while (curr != -1) {
+            len++;
+            curr = parent[curr];
+        }
+        *out_path = (int*)malloc(len * sizeof(int));
+        *out_path_len = len;
+        curr = dst;
+        for (int i = len - 1; i >= 0; i--) {
+            (*out_path)[i] = curr;
+            curr = parent[curr];
+        }
+    }
   }
 
   // Memory Cleanup (Algorithm internals only)
