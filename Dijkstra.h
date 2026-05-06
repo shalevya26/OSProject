@@ -55,8 +55,11 @@ int minDistance(int dist[], int visited[], int N);
  * @param N: Total number of vertices
  * @param src: The starting vertex
  * @param dst: The target vertex
+ * @param out_path Pointer to extract path array for the GUI display
+ * @param out_path_len Path array length
  */
-void dijkstra(Node **graph, int N, int src, int dst);
+// ---> MILESTONE 3 ADDITION: Added pointers to extract the path array for the GUI
+void dijkstra(Node **graph, int N, int src, int dst, int** out_path, int* out_path_len);
 
 /**
  * Deep-frees the graph memory, including all linked list nodes.
