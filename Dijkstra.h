@@ -58,7 +58,6 @@ int minDistance(int dist[], int visited[], int N);
  * @param out_path Pointer to extract path array for the GUI display
  * @param out_path_len Path array length
  */
-// ---> MILESTONE 3 ADDITION: Added pointers to extract the path array for the GUI
 void dijkstra(Node **graph, int N, int src, int dst, int** out_path, int* out_path_len);
 
 /**
