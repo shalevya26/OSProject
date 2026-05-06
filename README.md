@@ -1,5 +1,5 @@
 * Milestone 1 commands:
-* 
+  
  -compilation: make milestone1
   
  -running: ./dijkstra <file_name>
@@ -8,7 +8,7 @@
   2 vertexes on a wheighted, directed graph. given by a formated .txt file.  
 
 * Milestones 2 commands:
-* 
+  
  -compilation: make milestone2
   
  -running: ./sim <file_name>
@@ -17,7 +17,7 @@
   resembles a communication network, displayed in a circular layout of devices (vertexes)
 
   * Milestone 3 commands:
-  * 
+    
   -compilation : make milestone3
 
   -running : ./sim
