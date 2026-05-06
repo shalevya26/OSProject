@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
   if (fscanf(file, "%d %d", &src, &dst) == 2) {
     fclose(file);  // Close file as soon as we're done reading
 
-    // ---> MILESTONE 3 ADDITION: Added array variables to capture the path from dijkstra
+    //Added array variables to capture the path from dijkstra
     int* path = NULL;
     int path_len = 0;
 
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     displayGraphGUI(graph, N, path, path_len);
 #endif
 
-    // ---> MILESTONE 3 ADDITION: Free dynamically allocated path
+    //Free dynamically allocated path
     if (path) free(path);
 
   } else {
