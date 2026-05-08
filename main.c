@@ -2,18 +2,19 @@
 #include <stdlib.h>
 #include "Dijkstra.h"
 
-// Only include Gui.h if the Makefile passes the ENABLE_GUI flag (Milestone 2)
+
 #ifdef ENABLE_GUI
 #include "Gui.h"
 #endif
-/* --- 1. File Handling --- */
+
 int main(int argc, char *argv[]) {
-  //Check if the user provided a filename via command line
+
   if (argc < 2) {
     printf("Usage: %s <file_name>\n", argv[0]);
     return 1;
   }
 
+  /* --- 1. File Handling --- */
   FILE* file = fopen(argv[1], "r");
   if (file == NULL) {
     printf("Error opening %s\n", argv[1]);
@@ -66,13 +67,22 @@ int main(int argc, char *argv[]) {
   if (fscanf(file, "%d %d", &src, &dst) == 2) {
     fclose(file);  // Close file as soon as we're done reading
 
+    //Added array variables to capture the path from dijkstra
+    int* path = NULL;
+    int path_len = 0;
+
     // Run Dijkstra's Algorithm to find the shortest path (runs for both milestones)
-    dijkstra(graph, N, src, dst);
+    dijkstra(graph, N, src, dst, &path, &path_len);
+
 
 #ifdef ENABLE_GUI
     // ---- Launch the Raylib GUI ----
-    displayGraphGUI(graph, N);
+    // ---> MILESTONE 3 ADDITION: pass path to GUI
+    displayGraphGUI(graph, N, path, path_len);
 #endif
+
+    //Free dynamically allocated path
+    if (path) free(path);
 
   } else {
     printf("Could not read source and destination nodes\n");
