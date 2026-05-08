@@ -30,7 +30,14 @@ void calculateNodePositions(Node** graph, int N, Vector2* positions) {
 
 /** *-------2.Graphic Interface Initialization:-------* */
 
-void displayGraphGUI(Node** graph, int N) {
+// Added path parameters
+void displayGraphGUI(Node** graph, int N, int* path, int path_len) {
+#ifndef MILESTONE3
+    // Silence compiler warnings for M2 since it doesn't use the path variables
+    (void)path;
+    (void)path_len;
+#endif
+
     // Window Initialization:
     const int screenWidth = 1000;
     const int screenHeight = 600;
@@ -41,8 +48,70 @@ void displayGraphGUI(Node** graph, int N) {
     Vector2 positions[15]; // Max of 15 vertices
     calculateNodePositions(graph, N, positions);
 
+#ifdef MILESTONE3
+    //  State variables for animation and button
+    bool isPlaying = false;
+    bool isFinished = false;
+    int current_node_idx = 0;
+    int current_jump = 0;
+    float state_timer = 0.0f;
+    int state = 1; // 0 = Wait at node, 1 = Move on edge
+    int current_edge_weight = 1;
+    Vector2 buttonCenter = { 920, 50 }; // Fixed position to prevent cutoff
+    float buttonRadius = 40.0f;         // Increased radius to fit text
+
+    // Grab first edge weight for animation initialization
+    if (path_len > 1) {
+        Node* temp = graph[path[0]];
+        while (temp) {
+            if (temp->vertex == path[1]) { current_edge_weight = temp->weight; break; }
+            temp = temp->next;
+        }
+    } else {
+        isFinished = true;
+    }
+#endif
+
     // Main Screen Loop
     while (!WindowShouldClose()) {
+
+#ifdef MILESTONE3
+        //Logic to update animation and handle button clicks
+        Vector2 mouse = GetMousePosition();
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(mouse, buttonCenter, buttonRadius)) {
+            if (!isFinished) isPlaying = !isPlaying;
+        }
+
+        if (isPlaying && !isFinished) {
+            state_timer += GetFrameTime();
+            if (state == 1) { // Moving on edge
+                if (state_timer >= 0.3f) {
+                    state_timer -= 0.3f;
+                    current_jump++;
+                    if (current_jump >= current_edge_weight) {
+                        current_node_idx++;
+                        current_jump = 0;
+                        if (current_node_idx >= path_len - 1) {
+                            isFinished = true; isPlaying = false;
+                        } else {
+                            state = 0; state_timer = 0.0f; // Wait at node
+                            current_edge_weight = 1;
+                            Node* temp = graph[path[current_node_idx]];
+                            while (temp) {
+                                if (temp->vertex == path[current_node_idx + 1]) {
+                                    current_edge_weight = temp->weight; break;
+                                }
+                                temp = temp->next;
+                            }
+                        }
+                    }
+                }
+            } else if (state == 0) { // Waiting at node
+                if (state_timer >= 1.0f) { state_timer -= 1.0f; state = 1; }
+            }
+        }
+#endif
+
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
@@ -103,6 +172,44 @@ void displayGraphGUI(Node** graph, int N) {
             // Draw the numerical identifier label in the center
             DrawText(TextFormat("%d", i), positions[i].x + 12, positions[i].y + 10, 20, BLACK);
         }
+
+#ifdef MILESTONE3
+        //Draw Play/Stop, Yellow Entity, and Text
+        DrawPoly(buttonCenter, 6, buttonRadius, 0, RED);
+
+        // Dynamically measure and center the text inside the button
+        const char* btnText = isPlaying ? "STOP" : "PLAY";
+        int textWidth = MeasureText(btnText, 20);
+        DrawText(btnText, buttonCenter.x - (textWidth / 2), buttonCenter.y - 10, 20, WHITE);
+
+        if (path_len > 0) {
+            Vector2 entityPos;
+            if (isFinished) {
+                entityPos = positions[path[path_len - 1]];
+            } else if (state == 0) {
+                entityPos = positions[path[current_node_idx]];
+            } else {
+                Vector2 startPos = positions[path[current_node_idx]];
+                Vector2 endPos = positions[path[current_node_idx + 1]];
+                float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
+                float nx = -sin(angle), ny = cos(angle), offset = 10.0f;
+                startPos.x += nx * offset; startPos.y += ny * offset;
+                endPos.x += nx * offset; endPos.y += ny * offset;
+
+                float fraction = (current_jump + (state_timer / 0.3f)) / (float)current_edge_weight;
+                if (fraction > 1.0f) fraction = 1.0f;
+                entityPos.x = startPos.x + (endPos.x - startPos.x) * fraction;
+                entityPos.y = startPos.y + (endPos.y - startPos.y) * fraction;
+            }
+            DrawCircle(entityPos.x + 20, entityPos.y + 20, 15, YELLOW);
+        }
+
+        if (isFinished && path_len > 1) {
+            DrawText("Reached Destination", screenWidth / 2 - 150, 20, 30, GREEN);
+        } else if (path_len == 0) {
+            DrawText("No Path Found", screenWidth / 2 - 100, 20, 30, RED);
+        }
+#endif
 
         EndDrawing();
     }
