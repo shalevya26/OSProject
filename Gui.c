@@ -53,6 +53,7 @@ void displayGraphGUI(Node** graph, int N, int* path, int path_len) {
   //  State variables for animation and button
   bool isPlaying = false;
   bool isFinished = false;
+  bool firstTimePlay = false;  // Don't show ball until first time pressing play
   int current_node_idx = 0;
   int current_jump = 0;
   float state_timer = 0.0f;
@@ -83,9 +84,11 @@ void displayGraphGUI(Node** graph, int N, int* path, int path_len) {
     Vector2 mouse = GetMousePosition();
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) &&
         CheckCollisionPointCircle(mouse, buttonCenter, buttonRadius)) {
-      if (!isFinished) isPlaying = !isPlaying;
+      if (!isFinished) {
+        isPlaying = !isPlaying;
+        firstTimePlay = true;
+      }
     }
-
     if (isPlaying && !isFinished) {
       state_timer += GetFrameTime();
       if (state == 1) {  // Moving on edge
@@ -167,8 +170,8 @@ void displayGraphGUI(Node** graph, int N, int* path, int path_len) {
         DrawLineEx(tip, p1, 2.0f, DARKGRAY);
         DrawLineEx(tip, p2, 2.0f, DARKGRAY);
 
-        // Draw the weight text at the midpoint (small white rectangle with red
-        // text)
+        // Draw the weight text at the midpoint (small white rectangle with
+        // red text)
         int midX = (start.x + end.x) / 2;
         int midY = (start.y + end.y) / 2;
         DrawRectangle(midX - 5, midY - 10, 20, 20,
@@ -222,7 +225,8 @@ void displayGraphGUI(Node** graph, int N, int* path, int path_len) {
         entityPos.x = startPos.x + (endPos.x - startPos.x) * fraction;
         entityPos.y = startPos.y + (endPos.y - startPos.y) * fraction;
       }
-      DrawCircle(entityPos.x + 20, entityPos.y + 20, 15, YELLOW);
+      if (firstTimePlay)
+        DrawCircle(entityPos.x + 20, entityPos.y + 20, 15, YELLOW);
     }
 
     if (isFinished && path_len > 1) {
