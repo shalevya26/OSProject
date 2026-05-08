@@ -20,7 +20,7 @@
     
   -compilation : make milestone3
 
-  -running : ./sim
+  -running : ./sim <file_name>
 
   -Description: Simulates movement on the given graph, from 2 vertexes found via Dijkstra,
    a yellow entity moves on the shortest path between them. as the edges it pasess wheight more,its
