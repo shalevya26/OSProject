@@ -23,7 +23,9 @@ FetchContent_MakeAvailable(raylib)
 
 # 4. Create your executable
 
-add_executable(OSproject main.c Dijkstra.c Gui.c Dijkstra.h Gui.h)
+add_executable(OSproject main.c Dijkstra.c Gui.c Dijkstra.h Gui.h
+        main.c
+        main.c)
 
 # 5. Link Raylib to your project
 target_link_libraries(OSproject PRIVATE raylib m)
