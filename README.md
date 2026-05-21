@@ -20,11 +20,16 @@
     
   -compilation : make milestone3
 
+
   -running : ./sim
+
+  -running : ./sim <file_name>
+
 
   -Description: Simulates movement on the given graph, from 2 vertexes found via Dijkstra,
    a yellow entity moves on the shortest path between them. as the edges it pasess wheight more,its
    movement slows accordintly.
+
 
    * Milestone 4 commands:
    
@@ -35,3 +40,5 @@
    Description: Adds multiple travalers to the simulation, each travaler is a separete prosses and each prosses
    is a son handeled by one mutual father prosses, the father does the dijkstra and display calaculations of each
    one of them and displays them running simultaneously.
+
+
