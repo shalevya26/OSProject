@@ -2,11 +2,9 @@
 #include <stdlib.h>
 #include "Dijkstra.h"
 
-
 #ifdef ENABLE_GUI
 #include "Gui.h"
 #endif
-
 
 // ---> MILESTONE 4 ADDITION: OS libraries for fork, wait, and signals
 #ifdef MILESTONE4
@@ -15,7 +13,6 @@
 #include <sys/wait.h>
 #include <signal.h>
 #endif
-
 
 int main(int argc, char *argv[]) {
 
@@ -146,7 +143,6 @@ int main(int argc, char *argv[]) {
   if (fscanf(file, "%d %d", &src, &dst) == 2) {
     fclose(file);
 
-
     int* path = NULL;
     int path_len = 0;
     dijkstra(graph, N, src, dst, &path, &path_len);
@@ -159,31 +155,12 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-    //Added array variables to capture the path from dijkstra
-    int* path = NULL;
-    int path_len = 0;
-
-    // Run Dijkstra's Algorithm to find the shortest path (runs for both milestones)
-    dijkstra(graph, N, src, dst, &path, &path_len);
-
-
-#ifdef ENABLE_GUI
-    // ---- Launch the Raylib GUI ----
-    // ---> MILESTONE 3 ADDITION: pass path to GUI
-    displayGraphGUI(graph, N, path, path_len);
-#endif
-
-    //Free dynamically allocated path
-    if (path) free(path);
     if (path) free(path);
   } else {
     printf("Could not read source and destination nodes\n");
     fclose(file);
   }
-
 #endif
-
-
 
   /* --- 6. Cleanup --- */
   freeGraph(graph, N);
