@@ -26,8 +26,8 @@
    a yellow entity moves on the shortest path between them. as the edges it pasess wheight more,its
    movement slows accordintly.
 
-   *Milestone 4 commands:
-   
+ * Milestone 4 commands:
+  
   -compilation : make milestone4
 
   -running : ./sim <file_name>
