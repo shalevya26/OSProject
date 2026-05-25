@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "Dijkstra.h"
 
 #ifdef ENABLE_GUI
@@ -8,14 +9,13 @@
 
 // ---> MILESTONE 4 ADDITION: OS libraries for fork, wait, and signals
 #ifdef MILESTONE4
-#include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <signal.h>
+#include <unistd.h>
 #endif
 
-int main(int argc, char *argv[]) {
-
+int main(int argc, char* argv[]) {
   if (argc < 2) {
     printf("Usage: %s <file_name>\n", argv[0]);
     return 1;
@@ -29,11 +29,17 @@ int main(int argc, char *argv[]) {
   }
 
   /* --- 2. Graph Metadata Input --- */
-  int N, M;  // N = Number of vertices, M = Number of edges
-  if (fscanf(file, "%d %d", &N, &M) != 2) {
-    printf("Failed to read graph dimensions\n");
-    fclose(file);
-    return 1;
+  int N = -1, M = -1;  // N = Number of vertices, M = Number of edges
+  char line[256];
+
+  while (fscanf(file, "%s", line) == 1) {
+    if (line[0] == '#') {
+      fgets(line, sizeof(line), file);  // Skip the rest of the comment line
+    } else {
+      N = atoi(line);          // The first non-comment string is N
+      fscanf(file, "%d", &M);  // The very next integer is M
+      break;                   // Break out of the loop
+    }
   }
 
   if (N < 0 || M < 0) {
@@ -66,32 +72,25 @@ int main(int argc, char *argv[]) {
     }
   }
 
- /* --- 5. Path Query and Algorithm Execution --- */
+  /* --- 5. Path Query and Algorithm Execution --- */
 
 #ifdef MILESTONE4
   // ---> MILESTONE 4 LOGIC: Multiple Travelers and Multiprocessing
 
-  // 1. Read the father's path to move the file pointer forward.
-  // As requested, the father manages but doesn't travel, so we just discard this data!
-  int father_src, father_dst;
-  if (fscanf(file, "%d %d", &father_src, &father_dst) != 2) {
-      printf("Warning: Could not read father's path\\n");
-  }
-
-  char line[256];
   int num_travelers = 0;
 
-  // 2. Now look for the number of son travelers (skipping optional comments like "#travelers")
+  // 1. Now look for the number of son travelers (skipping optional comments
+  // like "#travelers")
   while (fscanf(file, "%s", line) == 1) {
     if (line[0] == '#') {
-      fgets(line, sizeof(line), file); // skip the rest of the text line
+      fgets(line, sizeof(line), file);  // skip the rest of the text line
     } else {
       num_travelers = atoi(line);
       break;
     }
   }
 
-  // 3. Allocate memory and process the sons
+  // 2. Allocate memory and process the sons
   pid_t* pids = malloc(num_travelers * sizeof(pid_t));
   int** paths = malloc(num_travelers * sizeof(int*));
   int* path_lens = malloc(num_travelers * sizeof(int));
@@ -106,17 +105,19 @@ int main(int argc, char *argv[]) {
       pid_t pid = fork();
 
       if (pid < 0) {
-          printf("Fork failed!\n");
+        printf("Fork failed!\n");
       } else if (pid == 0) {
-          // --- CHILD PROCESS ---
-          printf("[%d] started\n", getpid());
+        // --- CHILD PROCESS ---
+        printf("[%d] started\n", getpid());
 
-          // Child goes to sleep. It will be killed by the parent later.
-          while(1) { sleep(1); }
-          exit(0);
+        // Child goes to sleep. It will be killed by the parent later.
+        while (1) {
+          sleep(1);
+        }
+        exit(0);
       } else {
-          // --- PARENT PROCESS ---
-          pids[i] = pid; // Save child's PID to track it
+        // --- PARENT PROCESS ---
+        pids[i] = pid;  // Save child's PID to track it
       }
     }
   }
@@ -129,8 +130,8 @@ int main(int argc, char *argv[]) {
 
   // Cleanup: Ensure all children are killed and waited for
   for (int i = 0; i < num_travelers; i++) {
-    kill(pids[i], SIGKILL); // Failsafe kill
-    waitpid(pids[i], NULL, 0); // Wait to prevent zombie processes
+    kill(pids[i], SIGKILL);     // Failsafe kill
+    waitpid(pids[i], NULL, 0);  // Wait to prevent zombie processes
     if (paths[i]) free(paths[i]);
   }
   free(paths);
