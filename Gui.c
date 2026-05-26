@@ -491,7 +491,6 @@ void displayGraphGUI_M4(Node** graph, int N, int** paths, int* path_lens,
 // ---> MILESTONE 5 ADDITION: IPC Parent Listener & Buffer GUI
 // ==============================================================================
 #ifdef MILESTONE5
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -529,6 +528,8 @@ void displayGraphGUI_M5(Node** graph, int N, int read_fd, int num_travelers) {
              "Communication Network - IPC Buffering (M5)");
   SetTargetFPS(60);
 
+  // Set pipe to non-blocking so read() doesn't freeze the Raylib GUI while
+  // waiting for children
   int flags = fcntl(read_fd, F_GETFL, 0);
   fcntl(read_fd, F_SETFL, flags | O_NONBLOCK);
 
