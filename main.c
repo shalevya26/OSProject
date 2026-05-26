@@ -141,7 +141,6 @@ int main(int argc, char* argv[]) {
       }
     }
   }
-  fclose(file);
 
 #ifdef ENABLE_GUI
   // Parent runs the new Milestone 4 GUI, passing arrays of paths and PIDs

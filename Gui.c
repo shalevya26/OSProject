@@ -612,16 +612,15 @@ void displayGraphGUI_M5(Node** graph, int N, int read_fd, int num_travelers) {
         if (travelers[i].state == 0 &&
             travelers[i].printed_node_idx == travelers[i].current_node_idx) {
           if (travelers[i].current_node_idx < travelers[i].path_len - 1) {
-            printf("[PID=%d] arrived at node %d | next node: %d\n",
+            printf("[%d] arrived at node %d | next node: %d\n",
                    travelers[i].pid,
                    travelers[i].path[travelers[i].current_node_idx],
                    travelers[i].path[travelers[i].current_node_idx + 1]);
             travelers[i].printed_node_idx++;
           } else if (travelers[i].isIPCFinished) {
-            printf("[PID=%d] arrived at node %d | DESTINATION\n",
-                   travelers[i].pid,
+            printf("[%d] arrived at node %d | DESTINATION\n", travelers[i].pid,
                    travelers[i].path[travelers[i].current_node_idx]);
-            printf("[PID=%d] finished\n", travelers[i].pid);
+            printf("[%d] finished\n", travelers[i].pid);
             travelers[i].printed_node_idx++;
           }
         }
