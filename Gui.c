@@ -540,6 +540,13 @@ void displayGraphGUI_M5(Node** graph, int N, int read_fd, int num_travelers) {
                      SKYBLUE, PINK,  LIME,    GOLD,   VIOLET};
 
   TravelerGUI* travelers = calloc(num_travelers, sizeof(TravelerGUI));
+
+  int node_owner[15];
+
+  for (int i = 0; i < 15; i++) {
+    node_owner[i] = -1;
+  }
+
   for (int i = 0; i < num_travelers; i++) {
     travelers[i].color = palette[i % 10];
     travelers[i].state = 0;
@@ -578,6 +585,10 @@ void displayGraphGUI_M5(Node** graph, int N, int read_fd, int num_travelers) {
         if (travelers[idx].path_len == 0) {
           travelers[idx].path[0] = msg.current_node;
           travelers[idx].path_len = 1;
+
+          if (node_owner[msg.current_node] == -1) {
+            node_owner[msg.current_node] = idx;
+          }
         }
 
         if (!msg.is_destination) {
@@ -622,6 +633,9 @@ void displayGraphGUI_M5(Node** graph, int N, int read_fd, int num_travelers) {
             printf("[%d] arrived at node %d | DESTINATION\n", travelers[i].pid,
                    travelers[i].path[travelers[i].current_node_idx]);
             printf("[%d] finished\n", travelers[i].pid);
+
+            node_owner[travelers[i].path[travelers[i].current_node_idx]] = -1;
+
             travelers[i].printed_node_idx++;
           }
         }
@@ -646,6 +660,16 @@ void displayGraphGUI_M5(Node** graph, int N, int read_fd, int num_travelers) {
             }
           } else if (travelers[i].state == 0) {  // Waiting
             if (travelers[i].state_timer >= 1.0f) {
+
+              int currentNode = travelers[i].path[travelers[i].current_node_idx];
+              int nextNode = travelers[i].path[travelers[i].current_node_idx + 1];
+              if (node_owner[nextNode] != -1 && node_owner[nextNode] != i) {
+                travelers[i].state_timer = 0.0f;
+                continue;
+              }
+              node_owner[nextNode] = i;
+              node_owner[currentNode] = -1;
+
               travelers[i].state_timer -= 1.0f;
               travelers[i].state = 1;
 
