@@ -55,3 +55,10 @@ semaphores and perfectly fit our one-way (child-to-parent) data flow.
 If a traveler wants to enter a vertex that is already occupied, it waits until the vertex becomes free.
 This prevents two travelers from being displayed on the same vertex at the same time.
 The synchronization is handled using semaphores, while the GUI clearly shows the waiting behavior.
+
+Team Contributions:
+
+* Milestone 1: Developed collaboratively by Rotem and Shalev.
+* Milestones 2–4: Developed by Itamar.
+* Milestone 5: Developed by Shalev.
+* Milestone 6: Developed by Rotem.
