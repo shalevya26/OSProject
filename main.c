@@ -293,7 +293,11 @@ int main(int argc, char* argv[]) {
 
 #ifdef ENABLE_GUI
   // 4. Parent runs the GUI, passing the read-end of the pipe
+#ifdef MILESTONE6
+  displayGraphGUI_M6(graph, N, pipefd[0], num_travelers);
+#else
   displayGraphGUI_M5(graph, N, pipefd[0], num_travelers);
+#endif
 #endif
 
   for (int i = 0; i < num_travelers; i++) {

@@ -17,4 +17,9 @@ void displayGraphGUI_M4(Node** graph, int N, int** paths, int* path_lens,
 void displayGraphGUI_M5(Node** graph, int N, int read_fd, int num_travelers);
 #endif
 
+#ifdef MILESTONE6
+void displayGraphGUI_M6(Node** graph, int N,int read_fd, int num_travelers);
+#endif
+
+
 #endif
