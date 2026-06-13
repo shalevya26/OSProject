@@ -44,3 +44,14 @@ their dijkstra-algorithmic and GUI display math calculations.
 -Description: Simulates autonomous movement of multiple travelers. Son processes calculate their own paths and report to
 the parent via IPC pipes. Pipes were chosen over shared memory because they provide built-in synchronization without
 semaphores and perfectly fit our one-way (child-to-parent) data flow.
+
+* Milestone 6 commands:
+
+-compilation : make milestone6
+
+-running : ./sim <file_name>
+
+-Description: Adds synchronization between multiple travelers. Each vertex can contain only one traveler at a time.
+If a traveler wants to enter a vertex that is already occupied, it waits until the vertex becomes free.
+This prevents two travelers from being displayed on the same vertex at the same time.
+The synchronization is handled using semaphores, while the GUI clearly shows the waiting behavior.

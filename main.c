@@ -32,6 +32,11 @@ typedef struct {
 } TravelerMsg;
 #endif
 
+#ifdef MILESTONE6
+#include <semaphore.h>
+#include <fcntl.h>
+#endif
+
 int main(int argc, char* argv[]) {
   if (argc < 2) {
     printf("Usage: %s <file_name>\n", argv[0]);
@@ -161,6 +166,19 @@ int main(int argc, char* argv[]) {
 
 #ifdef MILESTONE5
   // ---> MILESTONE 5 LOGIC: Autonomous Children & IPC
+#ifdef MILESTONE6
+  sem_t** node_sems = malloc(N * sizeof(sem_t*));
+  for (int i = 0; i < N; i++) {
+    char sem_name[64];
+    sprintf(sem_name, "/node_sem_%d_%d", getpid(), i);
+    sem_unlink(sem_name);
+    node_sems[i] = sem_open(sem_name, O_CREAT, 0666, 1);
+    if (node_sems[i] == SEM_FAILED) {
+      perror("sem_open failed");
+      exit(EXIT_FAILURE);
+    }
+  }
+#endif
 
   int num_travelers = 0;
 
@@ -218,6 +236,12 @@ int main(int argc, char* argv[]) {
         printf("[%d] started\n", getpid());
 
         // 2. Travel the path and report to the parent
+#ifdef MILESTONE6
+        if (path_len > 0) {
+          sem_wait(node_sems[path[0]]);
+        }
+#endif
+
         for (int j = 0; j < path_len; j++) {
           msg.current_node = path[j];
 
@@ -225,16 +249,26 @@ int main(int argc, char* argv[]) {
             msg.next_node = path[j + 1];
             msg.is_destination = false;
           } else {
-            msg.next_node = -1;  // No next node
+            msg.next_node = -1;
             msg.is_destination = true;
           }
 
-          // Send current state to the parent pipe [cite: 52]
           write(pipefd[1], &msg, sizeof(TravelerMsg));
-
-          // Sleep to simulate travel time and let the GUI update smoothly
           sleep(1);
+
+#ifdef MILESTONE6
+          if (j < path_len - 1) {
+            sem_wait(node_sems[path[j + 1]]);
+            sem_post(node_sems[path[j]]);
+          }
+#endif
         }
+
+#ifdef MILESTONE6
+        if (path_len > 0) {
+          sem_post(node_sems[path[path_len - 1]]);
+        }
+#endif
 
         // 3. Child Cleanup: Free memory inherited from the parent before
         // exiting to ensure a perfectly clean Valgrind report
@@ -268,6 +302,19 @@ int main(int argc, char* argv[]) {
 
   close(pipefd[0]);
   free(pids);
+
+#ifdef MILESTONE6
+  for (int i = 0; i < N; i++) {
+    char sem_name[64];
+
+    sprintf(sem_name, "/node_sem_%d_%d", getpid(), i);
+
+    sem_close(node_sems[i]);
+    sem_unlink(sem_name);
+  }
+
+  free(node_sems);
+#endif
 
 #else
   // ---> ORIGINAL MILESTONE 1-3 LOGIC (Single Traveler)
