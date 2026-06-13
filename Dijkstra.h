@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 /** * INF is defined as the maximum integer value to represent
- * nodes that are currently unreachable in the graph.
+ * nodes that are currently unreachable in the graph.txt.
  */
 #define INF INT_MAX
 
@@ -24,7 +24,7 @@ typedef struct Node {
 
 /**
  * Adds a new directed edge to the adjacency list.
- * @param graph: Pointer to the array of linked list heads
+ * @param graph.txt: Pointer to the array of linked list heads
  * @param src: The starting vertex index
  * @param dst: The destination vertex index
  * @param weight: The weight of the edge
@@ -51,7 +51,7 @@ int minDistance(int dist[], int visited[], int N);
 
 /**
  * Executes Dijkstra's algorithm to find the shortest path between two nodes.
- * @param graph: The adjacency list representation
+ * @param graph.txt: The adjacency list representation
  * @param N: Total number of vertices
  * @param src: The starting vertex
  * @param dst: The target vertex
@@ -62,8 +62,8 @@ int minDistance(int dist[], int visited[], int N);
 void dijkstra(Node **graph, int N, int src, int dst, int** out_path, int* out_path_len);
 
 /**
- * Deep-frees the graph memory, including all linked list nodes.
- * @param graph: The adjacency list to free
+ * Deep-frees the graph.txt memory, including all linked list nodes.
+ * @param graph.txt: The adjacency list to free
  * @param N: Number of vertex head pointers in the array
  */
 void freeGraph(Node **graph, int N);

@@ -135,7 +135,7 @@ void dijkstra(Node** graph, int N, int src, int dst, int** out_path, int* out_pa
 }
 
 /**
- * Deep-frees the graph: every node in the adjacency lists and the array itself.
+ * Deep-frees the graph.txt: every node in the adjacency lists and the array itself.
  */
 void freeGraph(Node** graph, int N) {
   if (!graph) return;

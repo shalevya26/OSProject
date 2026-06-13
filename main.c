@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (N < 0 || M < 0) {
-    printf("Invalid graph variables: N and M must be non-negative\n");
+    printf("Invalid graph.txt variables: N and M must be non-negative\n");
     fclose(file);
     return 1;
   }
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
   /* --- 3. Memory Allocation --- */
   Node** graph = (Node**)malloc(sizeof(Node*) * N);
   if (!graph) {
-    printf("Memory allocation failed for graph head pointers\n");
+    printf("Memory allocation failed for graph.txt head pointers\n");
     fclose(file);
     exit(1);
   }
