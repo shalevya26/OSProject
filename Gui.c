@@ -1,7 +1,6 @@
 #include <math.h>
 #include <raylib.h>
 #include <stdio.h>
-
 #include "Dijkstra.h"
 
 /** *-------1. Calculate graphic vertex layout:-------* */

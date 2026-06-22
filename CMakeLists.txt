@@ -25,7 +25,10 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(OSproject main.c Dijkstra.c Gui.c Dijkstra.h Gui.h
         main.c
-        main.c)
+        main.c
+        main_final.c
+        gui_final.c
+        gui_final.h)
 
 # 5. Link Raylib to your project
 target_link_libraries(OSproject PRIVATE raylib m)

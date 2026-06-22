@@ -2,39 +2,20 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "Dijkstra.h"
-
-#ifdef ENABLE_GUI
-#include "Gui.h"
-#endif
-
-// ---> MILESTONE 4 ADDITION: OS libraries for fork, wait, and signals
-#ifdef MILESTONE4
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#endif
-
-#ifdef MILESTONE5
+#include "gui_final.h"
 #include <signal.h>
 #include <stdbool.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
+#include <semaphore.h>
+#include <fcntl.h>
 
-// Message struct from son to father
 typedef struct {
   pid_t pid;
   int current_node;
   int next_node;
   bool is_destination;
 } TravelerMsg;
-#endif
-
-#ifdef MILESTONE6
-#include <semaphore.h>
-#include <fcntl.h>
-#endif
 
 int main(int argc, char* argv[]) {
   if (argc < 2) {
@@ -93,79 +74,6 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  /* --- 5. Path Query and Algorithm Execution --- */
-
-#ifdef MILESTONE4
-  // ---> MILESTONE 4 LOGIC: Multiple Travelers and Multiprocessing
-  int num_travelers = 0;
-
-  // 1. Now look for the number of son travelers (skipping optional comments
-  // like "#travelers")
-  while (fscanf(file, "%s", line) == 1) {
-    if (line[0] == '#') {
-      fgets(line, sizeof(line), file);  // skip the rest of the text line
-    } else {
-      num_travelers = atoi(line);
-      break;
-    }
-  }
-
-  // 2. Allocate memory and process the sons
-  pid_t* pids = malloc(num_travelers * sizeof(pid_t));
-  int** paths = malloc(num_travelers * sizeof(int*));
-  int* path_lens = malloc(num_travelers * sizeof(int));
-
-  for (int i = 0; i < num_travelers; i++) {
-    int src, dst;
-    if (fscanf(file, "%d %d", &src, &dst) == 2) {
-      if (src < 0 || src >= N || dst < 0 || dst >= N) {
-        printf("Invalid route\n");
-        exit(1);
-      }
-      // Parent calculates the path FIRST
-      dijkstra(graph, N, src, dst, &paths[i], &path_lens[i]);
-
-      // Fork the child process
-      pid_t pid = fork();
-
-      if (pid < 0) {
-        printf("Fork failed!\n");
-      } else if (pid == 0) {
-        // --- CHILD PROCESS ---
-        printf("[%d] started\n", getpid());
-
-        // Child goes to sleep. It will be killed by the parent later.
-        while (1) {
-          sleep(1);
-        }
-        exit(0);
-      } else {
-        // --- PARENT PROCESS ---
-        pids[i] = pid;  // Save child's PID to track it
-      }
-    }
-  }
-
-#ifdef ENABLE_GUI
-  // Parent runs the new Milestone 4 GUI, passing arrays of paths and PIDs
-  displayGraphGUI_M4(graph, N, paths, path_lens, pids, num_travelers);
-#endif
-
-  // Cleanup: Ensure all children are killed and waited for
-  for (int i = 0; i < num_travelers; i++) {
-    kill(pids[i], SIGKILL);     // Failsafe kill
-    waitpid(pids[i], NULL, 0);  // Wait to prevent zombie processes
-    if (paths[i]) free(paths[i]);
-  }
-  free(paths);
-  free(path_lens);
-  free(pids);
-
-#endif
-
-#ifdef MILESTONE5
-  // ---> MILESTONE 5 LOGIC: Autonomous Children & IPC
-#ifdef MILESTONE6
   sem_t** node_sems = malloc(N * sizeof(sem_t*));
   for (int i = 0; i < N; i++) {
     char sem_name[64];
@@ -177,7 +85,7 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     }
   }
-#endif
+
 
   int num_travelers = 0;
 
@@ -235,11 +143,10 @@ int main(int argc, char* argv[]) {
         printf("[%d] started\n", getpid());
 
         // 2. Travel the path and report to the parent
-#ifdef MILESTONE6
         if (path_len > 0) {
           sem_wait(node_sems[path[0]]);
         }
-#endif
+
 
         for (int j = 0; j < path_len; j++) {
           msg.current_node = path[j];
@@ -254,20 +161,16 @@ int main(int argc, char* argv[]) {
 
           write(pipefd[1], &msg, sizeof(TravelerMsg));
           sleep(1);
-
-#ifdef MILESTONE6
           if (j < path_len - 1) {
             sem_wait(node_sems[path[j + 1]]);
             sem_post(node_sems[path[j]]);
           }
-#endif
         }
 
-#ifdef MILESTONE6
         if (path_len > 0) {
           sem_post(node_sems[path[path_len - 1]]);
         }
-#endif
+
 
         // 3. Child Cleanup: Free memory inherited from the parent before
         // exiting to ensure a perfectly clean Valgrind report
@@ -290,14 +193,8 @@ int main(int argc, char* argv[]) {
   close(pipefd[1]);
   fclose(file);
 
-#ifdef ENABLE_GUI
-  // 4. Parent runs the GUI, passing the read-end of the pipe
-#ifdef MILESTONE6
   displayGraphGUI_M6(graph, N, pipefd[0], num_travelers);
-#else
-  displayGraphGUI_M5(graph, N, pipefd[0], num_travelers);
-#endif
-#endif
+
 
   for (int i = 0; i < num_travelers; i++) {
     waitpid(pids[i], NULL, 0);
@@ -305,8 +202,6 @@ int main(int argc, char* argv[]) {
 
   close(pipefd[0]);
   free(pids);
-
-#ifdef MILESTONE6
   for (int i = 0; i < N; i++) {
     char sem_name[64];
 
@@ -317,39 +212,7 @@ int main(int argc, char* argv[]) {
   }
 
   free(node_sems);
-#endif
 
-#else
-  // ---> ORIGINAL MILESTONE 1-3 LOGIC (Single Traveler)
-  int src, dst;
-  if (fscanf(file, "%d %d", &src, &dst) == 2) {
-    fclose(file);
-
-    if (src < 0 || src >= N || dst < 0 || dst >= N) {
-      printf("Invalid route\n");
-      freeGraph(graph, N);
-      exit(1);
-    }
-
-    int* path = NULL;
-    int path_len = 0;
-
-    dijkstra(graph, N, src, dst, &path, &path_len);
-
-#ifdef ENABLE_GUI
-#ifdef MILESTONE3
-    displayGraphGUI(graph, N, path, path_len);
-#else
-    displayGraphGUI(graph, N, NULL, 0);
-#endif
-#endif
-
-    if (path) free(path);
-  } else {
-    printf("Could not read source and destination nodes\n");
-    fclose(file);
-  }
-#endif
 
   /* --- 6. Cleanup --- */
   freeGraph(graph, N);
