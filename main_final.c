@@ -1,32 +1,52 @@
+#include <fcntl.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include "Dijkstra.h"
 #include "gui_final.h"
-#include <signal.h>
-#include <stdbool.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <semaphore.h>
-#include <fcntl.h>
 
-typedef struct {
-  pid_t pid;
-  int current_node;
-  int next_node;
-  bool is_destination;
-} TravelerMsg;
+int calculateRemainingWork(Node** graph, int* path, int path_len, int start_index) {
+  int work = 0;
+
+  for (int i = start_index; i < path_len - 1; i++) {
+    Node* temp = graph[path[i]];
+
+    while (temp) {
+      if (temp->vertex == path[i + 1]) {
+        work += temp->weight;
+        break;
+      }
+      temp = temp->next;
+    }
+  }
+
+  return work;
+}
 
 int main(int argc, char* argv[]) {
-  if (argc < 2) {
-    printf("Usage: %s <file_name>\n", argv[0]);
+  if (argc < 4) {
+    printf("Usage: %s -schd <fcfs|sjf> <file_name>\n", argv[0]);
+    return 1;
+  }
+  if (strcmp(argv[1], "-schd") != 0) {
+    printf("Error: Missing -schd flag. Usage: %s -schd <fcfs|sjf> <file_name>\n", argv[0]);
     return 1;
   }
 
+  char* algo = argv[2];
+  if (strcmp(algo, "fcfs") != 0 && strcmp(algo, "sjf") != 0) {
+    printf("Error: Scheduler algorithm must be 'fcfs' or 'sjf'\n");
+    return 1;
+  }
+
+
   /* --- 1. File Handling --- */
-  FILE* file = fopen(argv[1], "r");
+  FILE* file = fopen(argv[3], "r");
   if (file == NULL) {
-    printf("Error opening %s\n", argv[1]);
+    printf("Error opening %s\n", argv[3]);
     return 1;
   }
 
@@ -74,18 +94,6 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  sem_t** node_sems = malloc(N * sizeof(sem_t*));
-  for (int i = 0; i < N; i++) {
-    char sem_name[64];
-    sprintf(sem_name, "/node_sem_%d_%d", getpid(), i);
-    sem_unlink(sem_name);
-    node_sems[i] = sem_open(sem_name, O_CREAT, 0666, 1);
-    if (node_sems[i] == SEM_FAILED) {
-      perror("sem_open failed");
-      exit(EXIT_FAILURE);
-    }
-  }
-
 
   int num_travelers = 0;
 
@@ -108,6 +116,7 @@ int main(int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 
+
   // Allocate array for parent to track PIDs
   pid_t* pids = malloc(num_travelers * sizeof(pid_t));
   if (!pids) {
@@ -115,6 +124,16 @@ int main(int argc, char* argv[]) {
     fclose(file);
     freeGraph(graph, N);
     exit(EXIT_FAILURE);
+  }
+
+
+  // Create Parent-managed Wake-up Semaphores (One per traveler)
+  sem_t** go_sems = malloc(num_travelers * sizeof(sem_t*));
+  for (int i = 0; i < num_travelers; i++) {
+    char sem_name[64];
+    sprintf(sem_name, "/go_sem_%d_%d", getpid(), i);
+    sem_unlink(sem_name);
+    go_sems[i] = sem_open(sem_name, O_CREAT, 0666, 0); // Start locked (0)
   }
 
   // 3. Loop and fork children
@@ -140,35 +159,49 @@ int main(int argc, char* argv[]) {
 
         TravelerMsg msg;
         msg.pid = getpid();
+        msg.traveler_idx = i;
         printf("[%d] started\n", getpid());
 
         // 2. Travel the path and report to the parent
         if (path_len > 0) {
-          sem_wait(node_sems[path[0]]);
+          // Request starting node
+          msg.action = ACTION_REQ_NODE;
+          msg.node_id = path[0];
+          msg.job_len = calculateRemainingWork(graph, path, path_len, 0); // SJF priority (total work)
+          write(pipefd[1], &msg, sizeof(TravelerMsg));
+          sem_wait(go_sems[i]);   // Block until Parent grants access
         }
 
 
         for (int j = 0; j < path_len; j++) {
-          msg.current_node = path[j];
-
-          if (j < path_len - 1) {
-            msg.next_node = path[j + 1];
-            msg.is_destination = false;
-          } else {
-            msg.next_node = -1;
-            msg.is_destination = true;
-          }
-
+          // Tell GUI we entered the node
+          msg.action = ACTION_UPDATE_GUI;
+          msg.node_id = path[j];
+          msg.intended_next_node = (j < path_len - 1) ? path[j + 1] : -1;
+          msg.is_destination = (j == path_len - 1);
           write(pipefd[1], &msg, sizeof(TravelerMsg));
-          sleep(1);
+
+          sleep(1); // Simulate travel time
+
           if (j < path_len - 1) {
-            sem_wait(node_sems[path[j + 1]]);
-            sem_post(node_sems[path[j]]);
+            // Request Next Node
+            msg.action = ACTION_REQ_NODE;
+            msg.node_id = path[j + 1];
+            msg.job_len = calculateRemainingWork(graph, path, path_len, j); // SJF priority (remaining path)
+            write(pipefd[1], &msg, sizeof(TravelerMsg));
+            sem_wait(go_sems[i]);
+
+            // Release Previous Node (Only after acquiring the next!)
+            msg.action = ACTION_RELEASE_NODE;
+            msg.node_id = path[j];
+            write(pipefd[1], &msg, sizeof(TravelerMsg));
           }
         }
 
         if (path_len > 0) {
-          sem_post(node_sems[path[path_len - 1]]);
+          msg.action = ACTION_RELEASE_NODE;
+          msg.node_id = path[path_len - 1];
+          write(pipefd[1], &msg, sizeof(TravelerMsg));
         }
 
 
@@ -179,6 +212,9 @@ int main(int argc, char* argv[]) {
         freeGraph(graph, N);
         fclose(file);
         free(pids);
+        for (int k = 0; k < num_travelers; k++) sem_close(go_sems[k]);
+        free(go_sems);
+
 
         exit(EXIT_SUCCESS);
       } else {
@@ -193,7 +229,7 @@ int main(int argc, char* argv[]) {
   close(pipefd[1]);
   fclose(file);
 
-  displayGraphGUI_M6(graph, N, pipefd[0], num_travelers);
+  displayGraphGUI_M6(graph, N, pipefd[0], num_travelers, algo, go_sems);
 
 
   for (int i = 0; i < num_travelers; i++) {
@@ -202,17 +238,14 @@ int main(int argc, char* argv[]) {
 
   close(pipefd[0]);
   free(pids);
-  for (int i = 0; i < N; i++) {
+
+  for (int i = 0; i < num_travelers; i++) {
     char sem_name[64];
-
-    sprintf(sem_name, "/node_sem_%d_%d", getpid(), i);
-
-    sem_close(node_sems[i]);
+    sprintf(sem_name, "/go_sem_%d_%d", getpid(), i);
+    sem_close(go_sems[i]);
     sem_unlink(sem_name);
   }
-
-  free(node_sems);
-
+  free(go_sems);
 
   /* --- 6. Cleanup --- */
   freeGraph(graph, N);
