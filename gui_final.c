@@ -28,6 +28,7 @@ typedef struct {
   int state;
   int current_edge_weight;
   Color color;
+  int last_update_order;
 
   int printed_node_idx;
 } TravelerGUI;
@@ -62,6 +63,8 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
   Color palette[] = {YELLOW, GREEN, MAGENTA, ORANGE, PURPLE, SKYBLUE, PINK, LIME, GOLD, VIOLET};
 
   TravelerGUI* travelers = calloc(num_travelers, sizeof(TravelerGUI));
+
+  int update_order_counter = 0;
 
   int* os_node_owner = malloc(N * sizeof(int));
   int* visual_node_owner = malloc(N * sizeof(int));
@@ -145,9 +148,11 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
         if (travelers[idx].path_len == 0) {
           visual_node_owner[msg.node_id] = idx;
         }
+        printf("[GUI UPDATE] traveler=%d node=%d next=%d\n",idx,msg.node_id,msg.intended_next_node);
         travelers[idx].path[travelers[idx].path_len] = msg.node_id;
         travelers[idx].intended_next[travelers[idx].path_len] = msg.intended_next_node;
         travelers[idx].path_len++;
+        travelers[idx].last_update_order = update_order_counter++;
         if (msg.is_destination) travelers[idx].isIPCFinished = true;
       }
     }
@@ -242,8 +247,24 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
             }
 
             if (travelers[i].state_timer >= 1.0f && travelers[i].current_node_idx + 1 < travelers[i].path_len) {
+
               int currentNode = travelers[i].path[travelers[i].current_node_idx];
               int nextNode = travelers[i].path[travelers[i].current_node_idx + 1];
+
+              bool someone_before_me = false;
+
+              for (int k = 0; k < num_travelers; k++) {
+                if (k == i) continue;
+                if (travelers[k].state == 0 &&
+                    travelers[k].current_node_idx + 1 < travelers[k].path_len &&
+                    travelers[k].last_update_order < travelers[i].last_update_order) {
+                  someone_before_me = true;
+                  break;
+                    }
+              }
+              if (someone_before_me) {
+                continue;
+              }
 
               if (visual_node_owner[nextNode] != -1 && visual_node_owner[nextNode] != i) {
                 continue;
