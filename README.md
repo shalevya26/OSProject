@@ -56,9 +56,20 @@ If a traveler wants to enter a vertex that is already occupied, it waits until t
 This prevents two travelers from being displayed on the same vertex at the same time.
 The synchronization is handled using semaphores, while the GUI clearly shows the waiting behavior.
 
+* Milestone 7 commands:
+
+-compilation : make milestone7
+
+-running : ./sim -schd fcfs <file_name>  OR  ./sim -schd sjf <file_name>
+
+-Description: Replaces arbitrary vertex entry with a centralized Parent Scheduler using FCFS or SJF algorithms.
+Processes request access through IPC pipes and block on personalized wake-up semaphores until the parent grants entrance based on the chosen scheduling policy.
+We chose FCFS and SJF to provide a classic architectural comparison between a completely chronological baseline and a shortest-remaining-path optimization.
+
 Team Contributions:
 
 * Milestone 1: Developed collaboratively by Rotem and Shalev.
 * Milestones 2–4: Developed by Itamar.
 * Milestone 5: Developed by Shalev.
 * Milestone 6: Developed by Rotem.
+* Milestone 7: Developed collaboratively by Rotem, Shalev and Itamar.
