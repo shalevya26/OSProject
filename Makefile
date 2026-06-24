@@ -27,6 +27,10 @@ milestone6:
 milestone7:
 	$(CC) $(CFLAGS) -DENABLE_GUI -DMILESTONE5 -o sim main_final.c Dijkstra.c gui_final.c $(GUI_LDFLAGS)
 
+install-raylib:
+	chmod +x raylib_install.sh
+	./raylib_install.sh
+
 
 clean:
 	rm -f dijkstra sim
