@@ -84,22 +84,45 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
     travelers[i].state_timer = 0.0f;
   }
 
-  // חזרנו למצב המקורי: המשחק מתחיל בסטופ וממתין ללחיצה על כפתור ה-Start
   bool isPlaying = false;
+  bool all_gui_finished = false; // Moved outside the loop to persist state
+
   Vector2 buttonCenter = {920, 50};
   float buttonRadius = 40.0f;
 
   while (!WindowShouldClose()) {
     Vector2 mouse = GetMousePosition();
+
+    // --- BUTTON CLICK LOGIC ---
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(mouse, buttonCenter, buttonRadius)) {
-      isPlaying = !isPlaying;
+      if (all_gui_finished) {
+        // RESET ACTION: Clear node ownership and reset all traveler animation states
+        for (int i = 0; i < N; i++) {
+          visual_node_owner[i] = -1;
+        }
+        for (int i = 0; i < num_travelers; i++) {
+          if (travelers[i].path_len > 0) {
+            travelers[i].current_node_idx = 0;
+            travelers[i].current_jump = 0;
+            travelers[i].state = 0;
+            travelers[i].state_timer = 0.0f;
+            travelers[i].printed_node_idx = 0;
+            travelers[i].current_edge_weight = 1;
+            // Place the traveler back on their starting node visually
+            visual_node_owner[travelers[i].path[0]] = i;
+          }
+        }
+        isPlaying = true; // Auto-play on reset (change to false if you want it to pause)
+        all_gui_finished = false;
+      } else {
+        isPlaying = !isPlaying;
+      }
     }
 
     TravelerMsg msg;
     ssize_t bytes_read;
 
     // --- PHASE 1: DRAIN THE PIPE ---
-    // קריאת ה-Pipe רצה תמיד ברקע כדי למנוע הצטברות הודעות ואיבוד סנכרון בזמן שהמשחק ב-Stop
     while ((bytes_read = read(read_fd, &msg, sizeof(TravelerMsg))) > 0) {
       if (bytes_read != sizeof(TravelerMsg)) continue;
       if (msg.action == ACTION_REQ_NODE) {
@@ -130,7 +153,6 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
     }
 
     // --- PHASE 2: SCHEDULER ALLOCATION ---
-    // גם הקצאות המתזמן רצות תמיד ברקע כדי שהילדים ב-Backend לא יתקעו בזמן שהמסך בסטופ
     for (int node = 0; node < N; node++) {
         if (os_node_owner[node] == -1 && wait_counts[node] > 0) {
             int selected_idx = 0;
@@ -169,7 +191,8 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
         }
     }
 
-    bool all_gui_finished = true;
+    // Default to true, and prove false if any traveler hasn't finished
+    all_gui_finished = true;
 
     for (int i = 0; i < num_travelers; i++) {
       if (travelers[i].pid == 0) {
@@ -182,9 +205,7 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
         all_gui_finished = false;
       }
 
-      // האנימציה והשהיית הזמן מקודמות אך ורק אם לחצנו על PLAY
       if (isPlaying) {
-        // הדפסת הלוגים מסונכרנת עם הגעת העיגול לקודקוד
         if (travelers[i].state == 0 && travelers[i].printed_node_idx == travelers[i].current_node_idx) {
             int p_idx = travelers[i].current_node_idx;
             if (!travelers[i].isIPCFinished || p_idx < travelers[i].path_len - 1) {
@@ -212,21 +233,18 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
                 travelers[i].current_node_idx++;
                 travelers[i].current_jump = 0;
                 travelers[i].state = 0;
-                travelers[i].state_timer = 0.0f; // איפוס הטיימר לטובת שהיית ה-1 שניה בצומת
+                travelers[i].state_timer = 0.0f;
               }
             }
           } else if (travelers[i].state == 0) {
-            // 1. הגבלת הטיימר לעצירה מוחלטת ב-1.0 שניות כדי למנוע צבירת זמן עודף
             if (travelers[i].state_timer > 1.0f) {
               travelers[i].state_timer = 1.0f;
             }
 
-            // 2. בדיקה: האם עברה שנייה שלמה וגם ה-Backend שלח אישור (הצומת הבא מעודכן)?
             if (travelers[i].state_timer >= 1.0f && travelers[i].current_node_idx + 1 < travelers[i].path_len) {
               int currentNode = travelers[i].path[travelers[i].current_node_idx];
               int nextNode = travelers[i].path[travelers[i].current_node_idx + 1];
 
-              // בדיקת נעילה ויזואלית
               if (visual_node_owner[nextNode] != -1 && visual_node_owner[nextNode] != i) {
                 continue;
               }
@@ -244,7 +262,6 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
                 temp = temp->next;
               }
 
-              // 3. איפוס מוחלט ל-0 כדי שהאנימציה של הנסיעה ב-state 1 תתחיל בדיוק בזמן ובצורה חלקה
               travelers[i].state_timer = 0.0f;
               travelers[i].state = 1;
             }
@@ -333,12 +350,14 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
       }
     }
 
-    // Draw UI
+    // --- Draw UI ---
     DrawPoly(buttonCenter, 6, buttonRadius, 0, RED);
     DrawText(TextFormat("Algo: %s", algo), 20, 20, 20, DARKBLUE);
+
     if (all_gui_finished) {
-      DrawText("DONE", buttonCenter.x - MeasureText("DONE", 20) / 2, buttonCenter.y - 10, 20, WHITE);
-      DrawText("All Travelers Finished", screenWidth / 2 - 160, 20, 30, GREEN);
+      // Changed text to RESET
+      DrawText("RESET", buttonCenter.x - MeasureText("RESET", 20) / 2, buttonCenter.y - 10, 20, WHITE);
+      DrawText("All Travelers Finished", screenWidth / 2 - 250, 20, 30, GREEN);
     } else {
       const char* btnText = isPlaying ? "STOP" : "PLAY";
       DrawText(btnText, buttonCenter.x - (MeasureText(btnText, 20) / 2), buttonCenter.y - 10, 20, WHITE);
