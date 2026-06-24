@@ -63,7 +63,6 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
 
   TravelerGUI* travelers = calloc(num_travelers, sizeof(TravelerGUI));
 
-  // Dynamic structures for Parent Scheduler
   int* os_node_owner = malloc(N * sizeof(int));
   int* visual_node_owner = malloc(N * sizeof(int));
 
@@ -71,8 +70,6 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
     os_node_owner[i] = -1;
     visual_node_owner[i] = -1;
   }
-
-
 
   WaitRequest** wait_queues = malloc(N * sizeof(WaitRequest*));
   int* wait_counts = calloc(N, sizeof(int));
@@ -84,8 +81,10 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
     travelers[i].color = palette[i % 10];
     travelers[i].state = 0;
     travelers[i].current_edge_weight = 1;
+    travelers[i].state_timer = 0.0f;
   }
 
+  // חזרנו למצב המקורי: המשחק מתחיל בסטופ וממתין ללחיצה על כפתור ה-Start
   bool isPlaying = false;
   Vector2 buttonCenter = {920, 50};
   float buttonRadius = 40.0f;
@@ -98,76 +97,76 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
 
     TravelerMsg msg;
     ssize_t bytes_read;
+
+    // --- PHASE 1: DRAIN THE PIPE ---
+    // קריאת ה-Pipe רצה תמיד ברקע כדי למנוע הצטברות הודעות ואיבוד סנכרון בזמן שהמשחק ב-Stop
     while ((bytes_read = read(read_fd, &msg, sizeof(TravelerMsg))) > 0) {
       if (bytes_read != sizeof(TravelerMsg)) continue;
+      if (msg.action == ACTION_REQ_NODE) {
+          int node = msg.node_id;
+          int t_idx = msg.traveler_idx;
+          printf("[REQUEST] traveler=%d node=%d job_len=%d\n", t_idx, node, msg.job_len);
 
-      if (msg.action == ACTION_UPDATE_GUI) {
-          int idx = msg.traveler_idx;
-          travelers[idx].pid = msg.pid;
+          wait_queues[node][wait_counts[node]].traveler_idx = t_idx;
+          wait_queues[node][wait_counts[node]].job_len = msg.job_len;
+          wait_counts[node]++;
+      }
+      else if (msg.action == ACTION_RELEASE_NODE) {
+          int node = msg.node_id;
+          os_node_owner[node] = -1;
+      }
+      else if (msg.action == ACTION_UPDATE_GUI) {
+        int idx = msg.traveler_idx;
+        travelers[idx].pid = msg.pid;
 
         if (travelers[idx].path_len == 0) {
           visual_node_owner[msg.node_id] = idx;
         }
-          travelers[idx].path[travelers[idx].path_len] = msg.node_id;
-          travelers[idx].intended_next[travelers[idx].path_len] = msg.intended_next_node;
-          travelers[idx].path_len++;
-          if (msg.is_destination) travelers[idx].isIPCFinished = true;
+        travelers[idx].path[travelers[idx].path_len] = msg.node_id;
+        travelers[idx].intended_next[travelers[idx].path_len] = msg.intended_next_node;
+        travelers[idx].path_len++;
+        if (msg.is_destination) travelers[idx].isIPCFinished = true;
       }
-      else if (msg.action == ACTION_REQ_NODE) {
-          int node = msg.node_id;
-          int t_idx = msg.traveler_idx;
-        printf("[REQUEST] traveler=%d node=%d job_len=%d\n",t_idx,node,msg.job_len);
+    }
 
-          if (os_node_owner[node] == -1) {
-              os_node_owner[node] = t_idx;
-              sem_post(go_sems[t_idx]); // Grant access immediately
-          } else {
-              wait_queues[node][wait_counts[node]].traveler_idx = t_idx;
-              wait_queues[node][wait_counts[node]].job_len = msg.job_len;
-              wait_counts[node]++;
-          }
-      }
-      else if (msg.action == ACTION_RELEASE_NODE) {
-          int node = msg.node_id;
-          if (wait_counts[node] > 0) {
-              int selected_idx = 0;
+    // --- PHASE 2: SCHEDULER ALLOCATION ---
+    // גם הקצאות המתזמן רצות תמיד ברקע כדי שהילדים ב-Backend לא יתקעו בזמן שהמסך בסטופ
+    for (int node = 0; node < N; node++) {
+        if (os_node_owner[node] == -1 && wait_counts[node] > 0) {
+            int selected_idx = 0;
 
-              // SJF Logic
-              if (strcmp(algo, "sjf") == 0) {
-
-                printf("\nQUEUE FOR NODE %d:\n", node);
-                for (int k = 0; k < wait_counts[node]; k++) {
-                  printf(" traveler=%d job_len=%d\n",
-                         wait_queues[node][k].traveler_idx,
-                         wait_queues[node][k].job_len);
+            if (strcmp(algo, "sjf") == 0) {
+                if (wait_counts[node] > 1) {
+                    printf("\n--- SJF DECISION FOR NODE %d ---\n", node);
+                    for (int k = 0; k < wait_counts[node]; k++) {
+                        printf(" Waiting: Traveler=%d, Job_Len=%d\n", wait_queues[node][k].traveler_idx, wait_queues[node][k].job_len);
+                    }
                 }
 
-                  int min_job = wait_queues[node][0].job_len;
-                  for (int k = 1; k < wait_counts[node]; k++) {
-                      if (wait_queues[node][k].job_len < min_job) {
-                          min_job = wait_queues[node][k].job_len;
-                          selected_idx = k;
-                      }
-                  }
-                printf("[SJF PICKED] traveler=%d job_len=%d\n",wait_queues[node][selected_idx].traveler_idx,wait_queues[node][selected_idx].job_len);
-              }
-              // For FCFS, selected_idx remains 0
+                int min_job = wait_queues[node][0].job_len;
+                for (int k = 1; k < wait_counts[node]; k++) {
+                    if (wait_queues[node][k].job_len < min_job) {
+                        min_job = wait_queues[node][k].job_len;
+                        selected_idx = k;
+                    }
+                }
 
-              int next_traveler = wait_queues[node][selected_idx].traveler_idx;
-            printf("[%d] next_traveler: %d\n", node, next_traveler);
+                if (wait_counts[node] > 1) {
+                    printf(" -> [SJF PICKED] Traveler=%d with Job_Len=%d\n------------------------------\n",
+                           wait_queues[node][selected_idx].traveler_idx, wait_queues[node][selected_idx].job_len);
+                }
+            }
 
-              // Shift queue
-              for (int k = selected_idx; k < wait_counts[node] - 1; k++) {
-                  wait_queues[node][k] = wait_queues[node][k + 1];
-              }
-              wait_counts[node]--;
+            int next_traveler = wait_queues[node][selected_idx].traveler_idx;
 
-              os_node_owner[node] = next_traveler;
-              sem_post(go_sems[next_traveler]);
-          } else {
-              os_node_owner[node] = -1;
-          }
-      }
+            for (int k = selected_idx; k < wait_counts[node] - 1; k++) {
+                wait_queues[node][k] = wait_queues[node][k + 1];
+            }
+            wait_counts[node]--;
+
+            os_node_owner[node] = next_traveler;
+            sem_post(go_sems[next_traveler]);
+        }
     }
 
     bool all_gui_finished = true;
@@ -183,8 +182,9 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
         all_gui_finished = false;
       }
 
+      // האנימציה והשהיית הזמן מקודמות אך ורק אם לחצנו על PLAY
       if (isPlaying) {
-        // Logging synced with GUI arrival
+        // הדפסת הלוגים מסונכרנת עם הגעת העיגול לקודקוד
         if (travelers[i].state == 0 && travelers[i].printed_node_idx == travelers[i].current_node_idx) {
             int p_idx = travelers[i].current_node_idx;
             if (!travelers[i].isIPCFinished || p_idx < travelers[i].path_len - 1) {
@@ -193,7 +193,7 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
                 travelers[i].printed_node_idx++;
             }
           else if (travelers[i].isIPCFinished) {
-              printf("[%d] arrived at node %d | DESTINATION\n",travelers[i].pid, travelers[i].path[p_idx]);
+              printf("[%d] arrived at node %d | DESTINATION\n", travelers[i].pid, travelers[i].path[p_idx]);
               printf("[%d] finished\n", travelers[i].pid);
               visual_node_owner[travelers[i].path[p_idx]] = -1;
               travelers[i].printed_node_idx++;
@@ -212,22 +212,27 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
                 travelers[i].current_node_idx++;
                 travelers[i].current_jump = 0;
                 travelers[i].state = 0;
-                travelers[i].state_timer = 0.0f;
+                travelers[i].state_timer = 0.0f; // איפוס הטיימר לטובת שהיית ה-1 שניה בצומת
               }
             }
           } else if (travelers[i].state == 0) {
-            if (travelers[i].state_timer >= 1.0f) {
-             int currentNode = travelers[i].path[travelers[i].current_node_idx];
-             int nextNode = travelers[i].path[travelers[i].current_node_idx+1];
+            // 1. הגבלת הטיימר לעצירה מוחלטת ב-1.0 שניות כדי למנוע צבירת זמן עודף
+            if (travelers[i].state_timer > 1.0f) {
+              travelers[i].state_timer = 1.0f;
+            }
 
-             if (visual_node_owner[nextNode] != -1 && visual_node_owner[nextNode] != i) {
-               travelers[i].state_timer = 0.0f;
-               continue;
-             }
+            // 2. בדיקה: האם עברה שנייה שלמה וגם ה-Backend שלח אישור (הצומת הבא מעודכן)?
+            if (travelers[i].state_timer >= 1.0f && travelers[i].current_node_idx + 1 < travelers[i].path_len) {
+              int currentNode = travelers[i].path[travelers[i].current_node_idx];
+              int nextNode = travelers[i].path[travelers[i].current_node_idx + 1];
 
-             visual_node_owner[nextNode] = i;
-             visual_node_owner[currentNode] = -1;
+              // בדיקת נעילה ויזואלית
+              if (visual_node_owner[nextNode] != -1 && visual_node_owner[nextNode] != i) {
+                continue;
+              }
 
+              visual_node_owner[nextNode] = i;
+              visual_node_owner[currentNode] = -1;
 
               travelers[i].current_edge_weight = 1;
               Node* temp = graph[travelers[i].path[travelers[i].current_node_idx]];
@@ -238,7 +243,9 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
                 }
                 temp = temp->next;
               }
-              travelers[i].state_timer -= 1.0f;
+
+              // 3. איפוס מוחלט ל-0 כדי שהאנימציה של הנסיעה ב-state 1 תתחיל בדיוק בזמן ובצורה חלקה
+              travelers[i].state_timer = 0.0f;
               travelers[i].state = 1;
             }
           }
