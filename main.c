@@ -257,7 +257,6 @@ int main(int argc, char* argv[]) {
           // MISSION A LOGIC (Milestone 5 ONLY)
           // ==========================================
           int edge_weight = 3; // Default fallback for the destination node
-
           if (j < path_len - 1) {
             Node* temp = graph[path[j]];
             while (temp) {
