@@ -270,6 +270,7 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
                 if (k == i) continue;
                 if (travelers[k].state == 0 &&
                     travelers[k].current_node_idx + 1 < travelers[k].path_len &&
+                    travelers[k].path[travelers[k].current_node_idx + 1] == nextNode &&
                     travelers[k].last_update_order < travelers[i].last_update_order) {
                   someone_before_me = true;
                   break;
