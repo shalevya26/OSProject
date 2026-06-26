@@ -252,6 +252,43 @@ int main(int argc, char* argv[]) {
             msg.is_destination = true;
           }
 
+#if defined(MILESTONE5) && !defined(MILESTONE6)
+          // ==========================================
+          // MISSION A LOGIC (Milestone 5 ONLY)
+          // ==========================================
+          int edge_weight = 3; // Default fallback for the destination node
+
+          if (j < path_len - 1) {
+            Node* temp = graph[path[j]];
+            while (temp) {
+              if (temp->vertex == path[j+1]) {
+                edge_weight = temp->weight;
+                break;
+              }
+              temp = temp->next;
+            }
+          }
+
+          // Convert to microseconds (1 second = 1,000,000 microseconds)
+          int total_sleep_us = edge_weight * 1000000;
+          int node_sleep_us = total_sleep_us / 3;
+          int edge_sleep_us = total_sleep_us - node_sleep_us;
+
+          // 1. Sleep for 1/3 of the time (Simulating staying at the node)
+          usleep(node_sleep_us);
+
+          // 2. Report to parent (Triggers the GUI to start moving the dot)
+          write(pipefd[1], &msg, sizeof(TravelerMsg));
+
+          // 3. Sleep for 2/3 of the time (Simulating moving on the edge)
+          if (j < path_len - 1) {
+            usleep(edge_sleep_us);
+          }
+
+#else
+          // ==========================================
+          // ORIGINAL LOGIC (Milestones 6 & 7)
+          // ==========================================
           write(pipefd[1], &msg, sizeof(TravelerMsg));
           sleep(1);
 
@@ -260,6 +297,7 @@ int main(int argc, char* argv[]) {
             sem_wait(node_sems[path[j + 1]]);
             sem_post(node_sems[path[j]]);
           }
+#endif
 #endif
         }
 
