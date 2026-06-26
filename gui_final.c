@@ -167,6 +167,7 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
         if (os_node_owner[node] == -1 && wait_counts[node] > 0) {
             int selected_idx = 0;
 
+            // Decision making for the SJF algo
             if (strcmp(algo, "sjf") == 0) {
               if (wait_counts[node] > 1) {
                 printf("\n--- SJF DECISION FOR NODE %d ---\n", node);
