@@ -28,17 +28,17 @@ int calculateRemainingWork(Node** graph, int* path, int path_len, int start_inde
 
 int main(int argc, char* argv[]) {
   if (argc < 4) {
-    printf("Usage: %s -schd <fcfs|sjf> <file_name>\n", argv[0]);
+    printf("Usage: %s -schd <fcfs|sjf|priority> <file_name>\n", argv[0]);
     return 1;
   }
   if (strcmp(argv[1], "-schd") != 0) {
-    printf("Error: Missing -schd flag. Usage: %s -schd <fcfs|sjf> <file_name>\n", argv[0]);
+    printf("Error: Missing -schd flag. Usage: %s -schd <fcfs|sjf|priority> <file_name>\n", argv[0]);
     return 1;
   }
 
   char* algo = argv[2];
-  if (strcmp(algo, "fcfs") != 0 && strcmp(algo, "sjf") != 0) {
-    printf("Error: Scheduler algorithm must be 'fcfs' or 'sjf'\n");
+  if (strcmp(algo, "fcfs") != 0 && strcmp(algo, "sjf") != 0 && strcmp(algo,"priority") !=0) {
+    printf("Error: Scheduler algorithm must be 'fcfs' or 'sjf' or 'priority' \n");
     return 1;
   }
 
