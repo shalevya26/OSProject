@@ -131,7 +131,6 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
       if (msg.action == ACTION_REQ_NODE) {
           int node = msg.node_id;
           int t_idx = msg.traveler_idx;
-          printf("[REQUEST] traveler=%d node=%d job_len=%d\n", t_idx, node, msg.job_len);
 
           wait_queues[node][wait_counts[node]].traveler_idx = t_idx;
           wait_queues[node][wait_counts[node]].job_len = msg.job_len;
@@ -148,7 +147,6 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
         if (travelers[idx].path_len == 0) {
           visual_node_owner[msg.node_id] = idx;
         }
-        printf("[GUI UPDATE] traveler=%d node=%d next=%d\n",idx,msg.node_id,msg.intended_next_node);
         travelers[idx].path[travelers[idx].path_len] = msg.node_id;
         travelers[idx].intended_next[travelers[idx].path_len] = msg.intended_next_node;
         travelers[idx].path_len++;
@@ -163,24 +161,12 @@ void displayGraphGUI_M6(Node** graph, int N, int read_fd, int num_travelers, con
             int selected_idx = 0;
 
             if (strcmp(algo, "sjf") == 0) {
-                if (wait_counts[node] > 1) {
-                    printf("\n--- SJF DECISION FOR NODE %d ---\n", node);
-                    for (int k = 0; k < wait_counts[node]; k++) {
-                        printf(" Waiting: Traveler=%d, Job_Len=%d\n", wait_queues[node][k].traveler_idx, wait_queues[node][k].job_len);
-                    }
-                }
-
                 int min_job = wait_queues[node][0].job_len;
                 for (int k = 1; k < wait_counts[node]; k++) {
                     if (wait_queues[node][k].job_len < min_job) {
                         min_job = wait_queues[node][k].job_len;
                         selected_idx = k;
                     }
-                }
-
-                if (wait_counts[node] > 1) {
-                    printf(" -> [SJF PICKED] Traveler=%d with Job_Len=%d\n------------------------------\n",
-                           wait_queues[node][selected_idx].traveler_idx, wait_queues[node][selected_idx].job_len);
                 }
             }
 
